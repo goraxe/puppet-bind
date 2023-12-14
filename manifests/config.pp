@@ -28,7 +28,7 @@ class bind::config {
   }
 
   concat { $bind::service_config_file:
-    validate_cmd => '/usr/sbin/named-checkconf %',
+    validate_cmd => '/usr/bin/named-checkconf %',
   }
 
   concat::fragment { 'named.conf base':
@@ -44,7 +44,7 @@ class bind::config {
   file { extlib::path_join([$bind::config_dir, 'bind.keys']):
     ensure       => file,
     content      => epp("${module_name}/etc/bind/bind.keys.epp"),
-    validate_cmd => '/usr/sbin/named-checkconf %',
+    validate_cmd => '/usr/bin/named-checkconf %',
   }
 
   exec { '/usr/sbin/rndc-confgen -a':
@@ -56,7 +56,7 @@ class bind::config {
     owner        => root,
     group        => $bind::service_group,
     mode         => '0640',
-    validate_cmd => '/usr/sbin/named-checkconf %',
+    validate_cmd => '/usr/bin/named-checkconf %',
   }
 
   $default_zone_filenames_to_names = {
@@ -71,7 +71,7 @@ class bind::config {
       file { extlib::path_join([$bind::config_dir, $filename]):
         ensure       => file,
         content      => file("${module_name}/etc/bind/${filename}"),
-        validate_cmd => "/usr/sbin/named-checkzone -k fail -m fail -M fail -n fail -r fail -S fail '${name}' %",
+        validate_cmd => "/usr/bin/named-checkzone -k fail -m fail -M fail -n fail -r fail -S fail '${name}' %",
       }
     }
   }

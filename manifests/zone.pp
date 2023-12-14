@@ -191,7 +191,7 @@ define bind::zone (
           'ns_legacy_address'    => $ns_legacy_address,
         },
       ),
-      validate_cmd => "/usr/sbin/named-checkzone -k fail -m fail -M fail -n fail -r fail -S fail '${zone_name}' %",
+      validate_cmd => "/usr/bin/named-checkzone -k fail -m fail -M fail -n fail -r fail -S fail '${zone_name}' %",
     }
 
     $resource_records.each |$rrname, $attribs| {
