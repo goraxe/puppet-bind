@@ -23,6 +23,21 @@ define bind::key (
 ) {
   include bind
 
+  file { '/etc/bind/keys.d/'
+    ensure => 'directory'   
+  }
+
+  file { "/etc/bind/keys.d/${name}":
+    ensure => 'exists',
+    content => epp("${module_name}/key.epp",
+      {
+        name      => $name,
+        algorithm => $algorithm,
+        secret    => $secret,
+      }
+    ),
+  }
+
   concat::fragment { "key-${name}":
     target  => $bind::service_config_file,
     content => epp("${module_name}/key.epp",
