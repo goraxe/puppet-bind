@@ -25,7 +25,6 @@ define bind::key (
 
 
   file { "/etc/bind/keys.d/${name}":
-    ensure  => 'exists',
     content => epp("${module_name}/key.epp",
       {
         name      => $name,
