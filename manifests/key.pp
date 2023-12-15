@@ -23,12 +23,12 @@ define bind::key (
 ) {
   include bind
 
-  file { '/etc/bind/keys.d/'
-    ensure => 'directory'   
+  file { '/etc/bind/keys.d/':
+    ensure => 'directory'
   }
 
   file { "/etc/bind/keys.d/${name}":
-    ensure => 'exists',
+    ensure  => 'exists',
     content => epp("${module_name}/key.epp",
       {
         name      => $name,

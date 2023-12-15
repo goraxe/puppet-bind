@@ -1,0 +1,43 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: meta
+    hooks:
+      - id: check-hooks-apply
+      - id: check-useless-excludes
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-json
+      - id: check-yaml
+        args: [ --allow-multiple-documents ]
+      - id: check-added-large-files
+  - repo: https://github.com/mpalmer/action-validator
+    rev: v0.5.4
+    hooks:
+      - id: action-validator
+  - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+    rev: v9.10.0
+    hooks:
+      - id: commitlint
+        stages: [ commit-msg ]
+        additional_dependencies: [ 'conventional-changelog' ]
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-nodejs
+    rev: v1.1.2
+    hooks:
+      - id: markdown-toc
+        # optional custom config:
+        args: [ --indent, "    ", -i ]
+  - repo: https://github.com/chriskuehl/puppet-pre-commit-hooks.git
+    rev: v2.2.0
+    hooks:
+      #- id: epp-validate
+      #- id: erb-validate
+      - id: puppet-lint
+        args:
+          - --fail-on-warnings
+          - --no-documentation-check
+      - id: puppet-validate
+      - id: ruby-validate
