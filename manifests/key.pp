@@ -24,7 +24,7 @@ define bind::key (
   include bind
 
 
-  file { "/etc/bind/keys.d/${name}":
+  file { "/etc/bind/keys.d/${name}.key":
     content => epp("${module_name}/key.epp",
       {
         name      => $name,
