@@ -27,6 +27,16 @@ class bind::config {
     recurse => true,
   }
 
+  file { "${bind::config_dir}/keys.d/":
+    ensure  => directory,
+    owner   => root,
+    group   => $bind::service_group,
+    mode    => '2755',
+    force   => true,
+    purge   => true,
+    recurse => true,
+  }
+
   concat { $bind::service_config_file:
     validate_cmd => '/usr/bin/named-checkconf %',
   }
