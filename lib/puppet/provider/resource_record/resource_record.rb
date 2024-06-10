@@ -5,7 +5,7 @@ require 'puppet/resource_api/simple_provider'
 # Implementation for the resource_record type using the Resource API.
 class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::SimpleProvider
   def get(context)
-    context.notice("Getting '#{name}' with context: #{context.inspect}")
+    context.notice("Getting with context: #{context.inspect}")
     # use dig to query dns
     cmd = "dig +noall +answer @localhost #{context[:zone]} #{context[:record]} #{context[:type]}"
     IO.popen(cmd, 'r+') do |io|
