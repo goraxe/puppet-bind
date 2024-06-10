@@ -74,7 +74,7 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
       r[:zone] = r[:zone]
       r[:type] = r[:type].upcase
       r[:data] = r[:data]
-      r[:ttl] = r[:ttl].to_i || 3600
+      r[:ttl] = r[:ttl] || 3600.to_s
     end
   end
 end
