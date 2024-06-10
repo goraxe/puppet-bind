@@ -6,16 +6,26 @@ require 'puppet/resource_api/simple_provider'
 class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::SimpleProvider
   def get(context)
     context.notice("Getting with context: #{context.inspect}")
-    # use dig to query dns
-    cmd = "dig +noall +answer @localhost #{context[:zone]} #{context[:record]} #{context[:type]}"
-    IO.popen(cmd, 'r+') do |io|
-      result = io.read
-      context.notice(result)
-      # parts has form <zone> <ttl> <class> <type> <data>
-      (zone, ttl, dnsclass, type, data) = result.split("\t")
+    # look in the /var/cache/bind/ directory for the zone files
+    # parse out to a zone and attempt to zone xfer
+    results = []
+    Dir.glob('/var/cache/bind/db.*\.').each do |zone|
+      context.notice("Zone: #{zone}")
+      zone.gsub!('/var/cache/bind/db.', '')
+      cmd = "dig +noall +answer -k /etc/bind/rndc.key @localhost #{zone} AXFR"
+      IO.popen(cmd, 'r+') do |io|
+        io.readlines do |line|
+
+        context.notice(line)
+        # parts has form <zone> <ttl> <class> <type> <data>
+        (zone, ttl, dnsclass, type, data) = result.split("\t")
+           results.push({ :zone => zone, :ttl => ttl, :class => dnsclass, :type => type, :data => data })
+          end
+      end
     end
 
-      { :zone => zone, :ttl => ttl, :class => dnsclass, :type => type, :data => data }
+    context.notice("Results: #{results.inspect}")
+    return results
   end
 
   def create(context, name, should)
