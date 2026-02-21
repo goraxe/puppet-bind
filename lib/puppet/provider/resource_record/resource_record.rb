@@ -12,6 +12,9 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
     return results unless File.directory?(ZONE_DIR)
 
     Dir.glob(File.join(ZONE_DIR, 'db.*')).each do |zone_file|
+      # Skip journal files
+      next if zone_file.end_with?('.jnl')
+
       zone_name = File.basename(zone_file).sub(%r{^db\.}, '')
       context.debug("Querying zone #{zone_name} via AXFR")
 
@@ -66,13 +69,12 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
 
   def update(context, name, should)
     context.notice("Updating '#{name}' with #{should.inspect}")
-    # Delete old record then add new one in a single nsupdate session
     zone = should[:zone]
     record = should[:record]
     type = should[:type]
     data = should[:data]
     ttl = should[:ttl]
-    commands = "update delete #{record}.#{zone} #{type}\nupdate add #{record}.#{zone} #{ttl} #{type} #{data}\nsend"
+    commands = "server localhost\nupdate delete #{record}.#{zone}. #{type}\nupdate add #{record}.#{zone}. #{ttl} #{type} #{data}\nsend"
     IO.popen('nsupdate', 'r+') do |io|
       io.puts(commands)
       io.close_write
@@ -100,7 +102,7 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
     type = should[:type]
     data = should[:data]
     ttl = should[:ttl]
-    cmd = "update #{action} #{record}.#{zone} #{ttl} #{type} #{data}\nsend"
+    cmd = "server localhost\nupdate #{action} #{record}.#{zone}. #{ttl} #{type} #{data}\nsend"
     IO.popen('nsupdate', 'r+') do |io|
       io.puts(cmd)
       io.close_write
