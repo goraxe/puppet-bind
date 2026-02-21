@@ -75,7 +75,7 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
     data = should[:data]
     ttl = should[:ttl]
     commands = "server localhost\nupdate delete #{record}.#{zone}. #{type}\nupdate add #{record}.#{zone}. #{ttl} #{type} #{data}\nsend"
-    IO.popen('nsupdate', 'r+') do |io|
+    IO.popen(['nsupdate', '-k', RNDC_KEY], 'r+') do |io|
       io.puts(commands)
       io.close_write
       context.debug(io.read)
@@ -103,7 +103,7 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
     data = should[:data]
     ttl = should[:ttl]
     cmd = "server localhost\nupdate #{action} #{record}.#{zone}. #{ttl} #{type} #{data}\nsend"
-    IO.popen('nsupdate', 'r+') do |io|
+    IO.popen(['nsupdate', '-k', RNDC_KEY], 'r+') do |io|
       io.puts(cmd)
       io.close_write
       context.debug(io.read)
