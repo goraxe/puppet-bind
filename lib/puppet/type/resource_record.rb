@@ -21,6 +21,10 @@ Puppet::ResourceApi.register_type(
   features: ['canonicalize'],
   title_patterns: [
     {
+      desc: 'name, zone, type, and data',
+      pattern: %r{^(?<record>.*?[^.])\.(?<zone>.*[^ ]\.) +(?<type>\S+) +(?<data>.+)$},
+    },
+    {
       desc: 'name, zone (everything after the first dot), space, type',
       pattern: %r{^(?<record>.*?[^.])\.(?<zone>.*[^ ]\.) +(?<type>.*)$},
     },
