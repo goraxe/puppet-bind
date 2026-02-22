@@ -57,6 +57,10 @@
 #
 # @param type The zone type. https://bind9.readthedocs.io/en/latest/reference.html#zone-types
 #
+# @param allow_update_forwarding Which hosts are allowed to forward Dynamic DNS updates to the
+#   primary server. Used on secondary zones to forward nsupdate requests.
+#   https://bind9.readthedocs.io/en/latest/reference.html#allow-update-forwarding-access
+#
 # @param update_policy The update-policy.
 #   https://bind9.readthedocs.io/en/latest/reference.html#dynamic-update-policies
 #
@@ -64,6 +68,7 @@ define bind::zone (
   Pattern[/\.$/] $zone_name = $title,
   Optional[Array[Variant[Stdlib::Host, Stdlib::IP::Address, String]]] $allow_transfer = undef,
   Optional[Array[Variant[Stdlib::Host, Stdlib::IP::Address, String]]] $allow_update = undef,
+  Optional[Array[Variant[Stdlib::Host, Stdlib::IP::Address, String]]] $allow_update_forwarding = undef,
   Optional[Array[Variant[Stdlib::Host, Stdlib::IP::Address, String]]] $also_notify = undef,
   Optional[Enum['allow', 'maintain', 'off']] $auto_dnssec = undef,
   Optional[Enum['IN', 'HS', 'hesiod', 'CHAOS']] $class = undef,
@@ -94,9 +99,10 @@ define bind::zone (
     content => epp("${module_name}/zone.conf.epp",
       {
         'zone_name'            => $zone_name,
-        'allow_transfer'       => $allow_transfer,
-        'allow_update'         => $allow_update,
-        'also_notify'          => $also_notify,
+        'allow_transfer'            => $allow_transfer,
+        'allow_update'              => $allow_update,
+        'allow_update_forwarding'   => $allow_update_forwarding,
+        'also_notify'               => $also_notify,
         'auto_dnssec'          => $auto_dnssec,
         'class'                => $class,
         'file'                 => $file,
