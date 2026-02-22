@@ -55,9 +55,11 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
         # Validate all namevars are present
         next if record.nil? || record.empty? || type.nil? || type.empty?
 
-        context.debug("Found record: #{record} #{zone_no_dot} #{type} #{data}")
+        title = "#{record}.#{zone_name} #{type}"
+        context.debug("Found record: #{title} -> #{data}")
 
         results << {
+          title: title,
           ensure: 'present',
           record: record,
           zone: zone_name,
