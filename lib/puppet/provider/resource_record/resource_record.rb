@@ -5,6 +5,7 @@ require 'puppet/resource_api/simple_provider'
 # Implementation for the resource_record type using the Resource API.
 class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::SimpleProvider
   RNDC_KEY = '/etc/bind/rndc.key'
+  KEY_DIR = '/etc/bind/keys.d'
   ZONE_DIR = '/var/cache/bind'
 
   def get(context)
@@ -18,7 +19,8 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
       zone_name = File.basename(zone_file).sub(%r{^db\.}, '')
       context.debug("Querying zone #{zone_name} via AXFR")
 
-      key_arg = File.exist?(RNDC_KEY) ? "-k #{RNDC_KEY}" : ''
+      axfr_key = find_axfr_key
+      key_arg = axfr_key ? "-k #{axfr_key}" : ''
       output = `dig @localhost #{zone_name} AXFR +noall +answer #{key_arg} 2>/dev/null`
       next unless $CHILD_STATUS&.success?
 
@@ -35,8 +37,8 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
         type = parts[3]
         data = parts[4]
 
-        # Skip SOA records - managed by the zone itself
-        next if type == 'SOA'
+        # Skip SOA and TSIG records
+        next if type == 'SOA' || type == 'TSIG'
 
         # Extract record name from FQDN by removing the zone suffix
         zone_no_dot = zone_name.chomp('.')
@@ -95,6 +97,14 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
   end
 
   private
+
+  def find_axfr_key
+    if File.directory?(KEY_DIR)
+      key = Dir.glob(File.join(KEY_DIR, '*.key')).first
+      return key if key
+    end
+    File.exist?(RNDC_KEY) ? RNDC_KEY : nil
+  end
 
   def nsupdate(context, should, action)
     zone = should[:zone]
