@@ -18,6 +18,7 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
       next if zone_file.end_with?('.jnl')
 
       zone_name = File.basename(zone_file).sub(%r{^db\.}, '')
+      zone_name = "#{zone_name}." unless zone_name.end_with?('.')
       context.debug("Querying zone #{zone_name} via AXFR")
 
       output = `dig @localhost #{zone_name} AXFR +noall +answer #{key_arg} 2>/dev/null`
@@ -59,9 +60,9 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
         results << {
           ensure: 'present',
           record: record,
-          zone: zone_no_dot,
+          zone: zone_name,
           type: type,
-          data: data.chomp('.'),
+          data: data,
           ttl: ttl.to_s,
         }
       end
@@ -83,7 +84,8 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
     type = should[:type]
     data = should[:data]
     ttl = should[:ttl]
-    commands = "server localhost\nupdate delete #{record}.#{zone}. #{type}\nupdate add #{record}.#{zone}. #{ttl} #{type} #{data}\nsend"
+    fqdn = build_fqdn(record, zone)
+    commands = "server localhost\nupdate delete #{fqdn} #{type}\nupdate add #{fqdn} #{ttl} #{type} #{data}\nsend"
     key_file = find_key
     nsupdate_cmd = key_file ? ['nsupdate', '-k', key_file] : ['nsupdate']
     IO.popen(nsupdate_cmd, 'r+') do |io|
@@ -102,6 +104,7 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
     resources.each do |r|
       r[:type] = r[:type].upcase
       r[:ttl] = r[:ttl] || '3600'
+      r[:zone] = "#{r[:zone]}." unless r[:zone].end_with?('.')
     end
   end
 
@@ -115,13 +118,24 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
     nil
   end
 
+  def build_fqdn(record, zone)
+    fqdn = record == '@' ? zone : "#{record}.#{zone}"
+    fqdn = "#{fqdn}." unless fqdn.end_with?('.')
+    fqdn
+  end
+
   def run_nsupdate(context, should, action)
     zone = should[:zone]
     record = should[:record]
     type = should[:type]
-    data = should[:data]
-    ttl = should[:ttl]
-    cmd = "server localhost\nupdate #{action} #{record}.#{zone}. #{ttl} #{type} #{data}\nsend"
+    fqdn = build_fqdn(record, zone)
+    if action == 'delete'
+      cmd = "server localhost\nupdate delete #{fqdn} #{type}\nsend"
+    else
+      data = should[:data]
+      ttl = should[:ttl]
+      cmd = "server localhost\nupdate add #{fqdn} #{ttl} #{type} #{data}\nsend"
+    end
     key_file = find_key
     nsupdate_cmd = key_file ? ['nsupdate', '-k', key_file] : ['nsupdate']
     IO.popen(nsupdate_cmd, 'r+') do |io|
