@@ -4,7 +4,6 @@ require 'puppet/resource_api/simple_provider'
 
 # Implementation for the resource_record type using the Resource API.
 class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::SimpleProvider
-  RNDC_KEY = '/etc/bind/rndc.key'
   KEY_DIR = '/etc/bind/keys.d'
   ZONE_DIR = '/var/cache/bind'
 
@@ -12,17 +11,19 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
     results = []
     return results unless File.directory?(ZONE_DIR)
 
+    key_file = find_key
+    key_arg = key_file ? "-k #{key_file}" : ''
+
     Dir.glob(File.join(ZONE_DIR, 'db.*')).each do |zone_file|
-      # Skip journal files
       next if zone_file.end_with?('.jnl')
 
       zone_name = File.basename(zone_file).sub(%r{^db\.}, '')
       context.debug("Querying zone #{zone_name} via AXFR")
 
-      axfr_key = find_axfr_key
-      key_arg = axfr_key ? "-k #{axfr_key}" : ''
       output = `dig @localhost #{zone_name} AXFR +noall +answer #{key_arg} 2>/dev/null`
       next unless $CHILD_STATUS&.success?
+
+      zone_no_dot = zone_name.chomp('.')
 
       output.each_line do |line|
         line = line.strip
@@ -37,17 +38,23 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
         type = parts[3]
         data = parts[4]
 
-        # Skip SOA and TSIG records
-        next if type == 'SOA' || type == 'TSIG'
+        # Skip SOA, TSIG, and RRSIG records
+        next if %w[SOA TSIG RRSIG NSEC NSEC3 NSEC3PARAM DNSKEY].include?(type)
 
-        # Extract record name from FQDN by removing the zone suffix
-        zone_no_dot = zone_name.chomp('.')
         fqdn_no_dot = fqdn.chomp('.')
         record = if fqdn_no_dot == zone_no_dot
                    '@'
                  else
                    fqdn_no_dot.sub(%r{\.#{Regexp.escape(zone_no_dot)}$}, '')
                  end
+
+        # Skip records that don't belong to this zone
+        next if record == fqdn_no_dot
+
+        # Validate all namevars are present
+        next if record.nil? || record.empty? || type.nil? || type.empty?
+
+        context.debug("Found record: #{record} #{zone_no_dot} #{type} #{data}")
 
         results << {
           ensure: 'present',
@@ -66,7 +73,7 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
 
   def create(context, name, should)
     context.notice("Creating '#{name}' with #{should.inspect}")
-    nsupdate(context, should, 'add')
+    run_nsupdate(context, should, 'add')
   end
 
   def update(context, name, should)
@@ -77,7 +84,9 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
     data = should[:data]
     ttl = should[:ttl]
     commands = "server localhost\nupdate delete #{record}.#{zone}. #{type}\nupdate add #{record}.#{zone}. #{ttl} #{type} #{data}\nsend"
-    IO.popen(['nsupdate', '-k', RNDC_KEY], 'r+') do |io|
+    key_file = find_key
+    nsupdate_cmd = key_file ? ['nsupdate', '-k', key_file] : ['nsupdate']
+    IO.popen(nsupdate_cmd, 'r+') do |io|
       io.puts(commands)
       io.close_write
       context.debug(io.read)
@@ -86,7 +95,7 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
 
   def delete(context, name)
     context.notice("Deleting '#{name}'")
-    nsupdate(context, name, 'delete')
+    run_nsupdate(context, name, 'delete')
   end
 
   def canonicalize(_context, resources)
@@ -98,22 +107,24 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
 
   private
 
-  def find_axfr_key
+  def find_key
     if File.directory?(KEY_DIR)
       key = Dir.glob(File.join(KEY_DIR, '*.key')).first
       return key if key
     end
-    File.exist?(RNDC_KEY) ? RNDC_KEY : nil
+    nil
   end
 
-  def nsupdate(context, should, action)
+  def run_nsupdate(context, should, action)
     zone = should[:zone]
     record = should[:record]
     type = should[:type]
     data = should[:data]
     ttl = should[:ttl]
     cmd = "server localhost\nupdate #{action} #{record}.#{zone}. #{ttl} #{type} #{data}\nsend"
-    IO.popen(['nsupdate', '-k', RNDC_KEY], 'r+') do |io|
+    key_file = find_key
+    nsupdate_cmd = key_file ? ['nsupdate', '-k', key_file] : ['nsupdate']
+    IO.popen(nsupdate_cmd, 'r+') do |io|
       io.puts(cmd)
       io.close_write
       context.debug(io.read)
