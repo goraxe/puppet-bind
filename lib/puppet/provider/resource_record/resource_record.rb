@@ -55,8 +55,8 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
         # Validate all namevars are present
         next if record.nil? || record.empty? || type.nil? || type.empty?
 
-        title = "#{record}.#{zone_name} #{type}"
-        context.debug("Found record: #{title} -> #{data}")
+        title = "#{record}.#{zone_name} #{type} #{data}"
+        context.debug("Found record: #{title}")
 
         results << {
           title: title,
@@ -87,7 +87,7 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
     data = should[:data]
     ttl = should[:ttl]
     fqdn = build_fqdn(record, zone)
-    commands = "server localhost\nupdate delete #{fqdn} #{type}\nupdate add #{fqdn} #{ttl} #{type} #{data}\nsend"
+    commands = "server localhost\nupdate delete #{fqdn} #{type} #{data}\nupdate add #{fqdn} #{ttl} #{type} #{data}\nsend"
     key_file = find_key
     nsupdate_cmd = key_file ? ['nsupdate', '-k', key_file] : ['nsupdate']
     IO.popen(nsupdate_cmd, 'r+') do |io|
@@ -130,11 +130,11 @@ class Puppet::Provider::ResourceRecord::ResourceRecord < Puppet::ResourceApi::Si
     zone = should[:zone]
     record = should[:record]
     type = should[:type]
+    data = should[:data]
     fqdn = build_fqdn(record, zone)
     if action == 'delete'
-      cmd = "server localhost\nupdate delete #{fqdn} #{type}\nsend"
+      cmd = "server localhost\nupdate delete #{fqdn} #{type} #{data}\nsend"
     else
-      data = should[:data]
       ttl = should[:ttl]
       cmd = "server localhost\nupdate add #{fqdn} #{ttl} #{type} #{data}\nsend"
     end

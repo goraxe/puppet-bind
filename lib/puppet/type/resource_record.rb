@@ -61,6 +61,7 @@ Puppet::ResourceApi.register_type(
     data: {
       type: 'String',
       desc: 'The data for the resource record.',
+      behavior: :namevar,
     },
     ttl: {
       type: 'Optional[String]',
